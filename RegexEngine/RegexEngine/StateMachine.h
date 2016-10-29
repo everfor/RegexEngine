@@ -8,6 +8,7 @@ class StateMachine
 {
 public:
 	friend class StateMachine;
+	StateMachine();
 	StateMachine(State *start_state, int n_outlists, ...);
 	~StateMachine();
 	StateMachine(const StateMachine& other);

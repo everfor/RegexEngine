@@ -154,8 +154,9 @@ void applyOperator(int op, stack<StateMachine>& fragments)
 
 void addOperator(int op, stack<StateMachine>& fragments, stack<int>& operators)
 {
-	while ((op & RegexCompiler::operator_precedence_mask) <=
-		(operators.top() & RegexCompiler::operator_precedence_mask))
+	while (!operators.empty() &&
+		((op & RegexCompiler::operator_precedence_mask) <=
+		(operators.top() & RegexCompiler::operator_precedence_mask)))
 	{
 		// If encountered '(', no more operations to be performed
 		if (operators.top() == RegexCompiler::operator_bracket)
@@ -214,7 +215,7 @@ bool RegexCompiler::compile(const string regex, StateMachine& machine)
 			else if (current == ')')
 			{
 				// Apply all operations before '('
-				while (operators.top() != '(')
+				while (operators.top() != operator_bracket)
 				{
 					applyOperator(operators.top(), fragments);
 					operators.pop();

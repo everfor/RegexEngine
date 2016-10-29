@@ -7,6 +7,11 @@
 
 using namespace std;
 
+StateMachine::StateMachine() :
+	start(nullptr)
+{
+}
+
 StateMachine::StateMachine(State * start_state, int n_outlists, ...)
 {
 	start = start_state;
