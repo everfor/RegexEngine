@@ -15,13 +15,12 @@ StateFactory::~StateFactory()
 {
 }
 
-State* StateFactory::CreateState(int condition, State *next, State *alt_next)
+State* StateFactory::CreateState(int condition, State *next, State *alt_next, bool alt_next_enabled)
 {
-	unique_ptr<State> state(new State(condition, next, alt_next));
-	auto state_ptr = state.get();
+	unique_ptr<State> state(new State(condition, next, alt_next, alt_next_enabled));
 	states.push_back(move(state));
 
-	return state_ptr;
+	return states.back().get();
 }
 
 void StateFactory::DeleteAllStates()

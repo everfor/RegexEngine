@@ -8,7 +8,7 @@ class State;
 class StateFactory
 {
 public:
-	static State* CreateState(int condition, State *next = nullptr, State *alt_next = nullptr);
+	static State* CreateState(int condition, State *next = nullptr, State *alt_next = nullptr, bool alt_next_enabled = false);
 	static void DeleteAllStates();
 private:
 	StateFactory();
