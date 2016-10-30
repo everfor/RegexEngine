@@ -8,8 +8,9 @@ class State
 public:
 	static enum state_special_conditions
 	{
-		state_split = 256,
-		state_match = 257
+		state_split = 256,		// Split into 2 branches
+		state_match = 257,		// End of matching
+		state_any = 258			// Matches anything
 	};
 	void setNext(State *new_nxt);
 	void setAltNext(State *new_alt_nxt);

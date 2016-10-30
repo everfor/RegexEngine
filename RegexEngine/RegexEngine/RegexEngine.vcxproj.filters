@@ -30,7 +30,7 @@
     <ClInclude Include="StateFactory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="RegexCompiler.h">
+    <ClInclude Include="RegexEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -50,7 +50,7 @@
     <ClCompile Include="Source.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="RegexCompiler.cpp">
+    <ClCompile Include="RegexEngine.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

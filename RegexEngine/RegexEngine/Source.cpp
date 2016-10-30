@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 
-#include "RegexCompiler.h"
+#include "RegexEngine.h"
 #include "StateMachine.h"
 
 using namespace std;
@@ -9,13 +9,17 @@ using namespace std;
 int main(int argc, char **argv)
 {
 	StateMachine machine;
-	auto compiler = RegexCompiler::Get();
+	auto compiler = RegexEngine::Get();
 
-	string regex("a(bb)+a");
+	string regex("a(bb)*a");
 
 	compiler->compile(regex, machine);
 
-	cout << "Not crashed!" << endl;
+	cout << "aa: " << compiler->match("aa", machine) << endl;
+	cout << "aba: " << compiler->match("aba", machine) << endl;
+	cout << "abba: " << compiler->match("abba", machine) << endl;
+	cout << "abbbba: " << compiler->match("abbbba", machine) << endl;
+
 	getchar();
 
 	return 0;

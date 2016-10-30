@@ -1,4 +1,4 @@
-#include "RegexCompiler.h"
+#include "RegexEngine.h"
 #include "StateMachine.h"
 #include "StateFactory.h"
 #include "State.h"
@@ -7,35 +7,35 @@
 
 using namespace std;
 
-unique_ptr<RegexCompiler> RegexCompiler::compiler;
-map<char, int> RegexCompiler::operator_map;
+unique_ptr<RegexEngine> RegexEngine::compiler;
+map<char, int> RegexEngine::operator_map;
 
-RegexCompiler::RegexCompiler()
+RegexEngine::RegexEngine()
 {
 }
 
-RegexCompiler::~RegexCompiler()
+RegexEngine::~RegexEngine()
 {
 }
 
-RegexCompiler* RegexCompiler::Get()
+RegexEngine* RegexEngine::Get()
 {
 	if (compiler == nullptr)
 	{
-		compiler.reset(new RegexCompiler());
+		compiler.reset(new RegexEngine());
 		InitializeOperatorMap();
 	}
 
 	return compiler.get();
 }
 
-void RegexCompiler::InitializeOperatorMap()
+void RegexEngine::InitializeOperatorMap()
 {
-	operator_map['|'] = RegexCompiler::operator_alternation;
-	operator_map['+'] = RegexCompiler::operator_oneormore;
-	operator_map['?'] = RegexCompiler::operator_oneorzero;
-	operator_map['*'] = RegexCompiler::operator_zeroormore;
-	operator_map['('] = RegexCompiler::operator_bracket;
+	operator_map['|'] = RegexEngine::operator_alternation;
+	operator_map['+'] = RegexEngine::operator_oneormore;
+	operator_map['?'] = RegexEngine::operator_oneorzero;
+	operator_map['*'] = RegexEngine::operator_zeroormore;
+	operator_map['('] = RegexEngine::operator_bracket;
 }
 
 /* Helper functions */
@@ -134,19 +134,19 @@ void applyOperator(int op, stack<StateMachine>& fragments)
 {
 	switch (op)
 	{
-	case RegexCompiler::operator_alternation:
+	case RegexEngine::operator_alternation:
 		createAlernation(fragments);
 		break;
-	case RegexCompiler::operator_oneormore:
+	case RegexEngine::operator_oneormore:
 		createOneOrMoreMatch(fragments);
 		break;
-	case RegexCompiler::operator_oneorzero:
+	case RegexEngine::operator_oneorzero:
 		createZeroOrOneMatch(fragments);
 		break;
-	case RegexCompiler::operator_zeroormore:
+	case RegexEngine::operator_zeroormore:
 		createZeroOrMoreMatch(fragments);
 		break;
-	case RegexCompiler::operator_concatenate:
+	case RegexEngine::operator_concatenate:
 		createConcatenation(fragments);
 		break;
 	}
@@ -155,11 +155,11 @@ void applyOperator(int op, stack<StateMachine>& fragments)
 void addOperator(int op, stack<StateMachine>& fragments, stack<int>& operators)
 {
 	while (!operators.empty() &&
-		((op & RegexCompiler::operator_precedence_mask) <=
-		(operators.top() & RegexCompiler::operator_precedence_mask)))
+		((op & RegexEngine::operator_precedence_mask) <=
+		(operators.top() & RegexEngine::operator_precedence_mask)))
 	{
 		// If encountered '(', no more operations to be performed
-		if (operators.top() == RegexCompiler::operator_bracket)
+		if (operators.top() == RegexEngine::operator_bracket)
 		{
 			break;
 		}
@@ -177,7 +177,7 @@ void addLiteral(char lit, stack<StateMachine>& fragments)
 	createLiteralMatch(lit, fragments);
 }
 
-bool RegexCompiler::compile(const string regex, StateMachine& machine)
+bool RegexEngine::compile(const string regex, StateMachine& machine)
 {
 	// Shunting-yard algorithm
 	stack<StateMachine> fragments;
@@ -232,7 +232,14 @@ bool RegexCompiler::compile(const string regex, StateMachine& machine)
 		else
 		{
 			// Real literals
-			addLiteral(current, fragments);
+			if (current == '.' && !is_escaped)
+			{
+				addLiteral(State::state_any, fragments);
+			}
+			else
+			{
+				addLiteral(current, fragments);
+			}
 
 			is_escaped = false;
 		}
@@ -257,4 +264,66 @@ bool RegexCompiler::compile(const string regex, StateMachine& machine)
 	machine = StateMachine(frag.getStart(), 1, vector<State*>{ end_state });
 
 	return true;
+}
+
+void addState(State *curr_state, vector<State*>& states)
+{
+	if (curr_state == nullptr)
+	{
+		return;
+	}
+	else if (curr_state->getCondition() == State::state_split)
+	{
+		addState(curr_state->getNext(), states);
+		addState(curr_state->getAltNext(), states);
+	}
+	else
+	{
+		states.push_back(curr_state);
+	}
+}
+
+bool matchState(int match_char, State* state)
+{
+	return (match_char == state->getCondition()) || (State::state_any == state->getCondition());
+}
+
+bool matchStep(int match_char, vector<State*>& current, vector<State*>& next)
+{
+	bool is_match = false;
+
+	for (int i = 0; i < current.size(); ++i)
+	{
+		if (matchState(match_char, current[i]))
+		{
+			is_match = true;
+			addState(current[i]->getNext(), next);
+		}
+	}
+
+	return is_match;
+}
+
+bool RegexEngine::match(const std::string input, StateMachine& machine)
+{
+	// Current and next set of states
+	vector<State*> current;
+	vector<State*> next;
+
+	// Initialize current states
+	addState(machine.getStart(), current);
+
+	for (int i = 0; i < input.length(); ++i)
+	{
+		if (!matchStep(input[i], current, next))
+		{
+			return false;
+		}
+
+		current.clear();
+		current = move(next);
+		next.clear();
+	}
+
+	return matchStep(State::state_match, current, next);
 }

@@ -6,12 +6,13 @@
 
 class StateMachine;
 
-class RegexCompiler
+class RegexEngine
 {
 public:
-	virtual ~RegexCompiler();
-	static RegexCompiler* Get();
+	virtual ~RegexEngine();
+	static RegexEngine* Get();
 	bool compile(const std::string regex, StateMachine& machine);
+	bool match(const std::string input, StateMachine& machine);
 	// Regex operators
 	// Most significant half byte = precedence
 	// Least significant half byte = id
@@ -26,10 +27,10 @@ public:
 	};
 	static const int operator_precedence_mask = 0xF0;
 private:
-	RegexCompiler();
+	RegexEngine();
 	static void InitializeOperatorMap();
 	// Singleton
-	static std::unique_ptr<RegexCompiler> compiler;
+	static std::unique_ptr<RegexEngine> compiler;
 	static std::map<char, int> operator_map;
 };
 

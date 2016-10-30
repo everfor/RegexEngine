@@ -110,7 +110,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="RegexCompiler.h" />
+    <ClInclude Include="RegexEngine.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="State.h" />
     <ClInclude Include="StateFactory.h" />
@@ -118,7 +118,7 @@
     <ClInclude Include="Util.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="RegexCompiler.cpp" />
+    <ClCompile Include="RegexEngine.cpp" />
     <ClCompile Include="Source.cpp" />
     <ClCompile Include="State.cpp" />
     <ClCompile Include="StateFactory.cpp" />
