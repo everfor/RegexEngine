@@ -115,7 +115,6 @@
     <ClInclude Include="State.h" />
     <ClInclude Include="StateFactory.h" />
     <ClInclude Include="StateMachine.h" />
-    <ClInclude Include="Util.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RegexEngine.cpp" />
@@ -123,10 +122,6 @@
     <ClCompile Include="State.cpp" />
     <ClCompile Include="StateFactory.cpp" />
     <ClCompile Include="StateMachine.cpp" />
-    <ClCompile Include="Util.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="RegexEngine.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

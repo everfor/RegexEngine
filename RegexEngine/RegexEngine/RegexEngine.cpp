@@ -48,6 +48,32 @@ void createLiteralMatch(char literal_char, stack<StateMachine>& fragments)
 	fragments.push(StateMachine(curr_state, 1, vector<State*>{ curr_state }));
 }
 
+void createRangeLiteralMatch(const string ranges, stack<StateMachine>& fragments)
+{
+	// Ranger literal match
+	auto curr_state = StateFactory::CreateState(State::state_range, nullptr);
+
+	int start = 0, end = 0;
+	while (true)
+	{
+		end = ranges.find('-', start);
+
+		if (end == string::npos)
+		{
+			break;
+		}
+
+		end += 1;
+
+		curr_state->addRange(ranges[start], ranges[end]);
+
+		start = end + 1;
+	}
+
+	// Create state machine on stack
+	fragments.push(StateMachine(curr_state, 1, vector<State*>{ curr_state }));
+}
+
 void createZeroOrOneMatch(stack<StateMachine>& fragments)
 {
 	// Retrieve the state to match ?
@@ -177,6 +203,11 @@ void addLiteral(char lit, stack<StateMachine>& fragments)
 	createLiteralMatch(lit, fragments);
 }
 
+void addRangeLiteral(const string ranges, stack<StateMachine>& fragments)
+{
+	createRangeLiteralMatch(ranges, fragments);
+}
+
 bool RegexEngine::compile(const string regex, StateMachine& machine)
 {
 	// Shunting-yard algorithm
@@ -234,7 +265,22 @@ bool RegexEngine::compile(const string regex, StateMachine& machine)
 			// Real literals
 			if (current == '.' && !is_escaped)
 			{
+				// Match anything
 				addLiteral(State::state_any, fragments);
+			}
+			else if (current == '[' && !is_escaped)
+			{
+				// Range matches
+
+				// Find position of next ']'
+				auto right_angle = regex.find(']', i);
+
+				// Create range literal
+				addRangeLiteral(regex.substr(i + 1, right_angle - i - 1), fragments);
+
+				// Update current to ']', and set i correspondingly
+				current = regex[right_angle];
+				i = right_angle;
 			}
 			else
 			{
@@ -285,7 +331,7 @@ void addState(State *curr_state, vector<State*>& states)
 
 bool matchState(int match_char, State* state)
 {
-	return (match_char == state->getCondition()) || (State::state_any == state->getCondition());
+	return state->isMatch(match_char);
 }
 
 bool matchStep(int match_char, vector<State*>& current, vector<State*>& next)

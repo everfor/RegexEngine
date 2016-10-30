@@ -1,5 +1,8 @@
 #include "State.h"
 
+#include <algorithm>
+
+using namespace std;
 
 State::State(int cond, State *nxt, State *alt_nxt, bool alt_next_enabled) :
 	condition(cond), next(nxt), alt_next(alt_nxt), is_alt_next_enabled(alt_next_enabled)
@@ -76,4 +79,26 @@ State* State::getAltNext() const
 bool State::altNextEnabled() const
 {
 	return is_alt_next_enabled;
+}
+
+bool State::isMatch(int test)
+{
+	if (condition == state_any)
+	{
+		return true;
+	}
+	else if (condition == state_range)
+	{
+		bool temp = any_of(begin(ranges), end(ranges), [&](pair<char, char> curr_range) { return curr_range.first <= test && test <= curr_range.second; });
+		return temp;
+	}
+	else
+	{
+		return condition == test;
+	}
+}
+
+void State::addRange(char lower, char upper)
+{
+	ranges.push_back(make_pair(lower, upper));
 }
