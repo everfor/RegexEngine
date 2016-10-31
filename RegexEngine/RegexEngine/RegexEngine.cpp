@@ -4,6 +4,7 @@
 #include "State.h"
 
 #include <stack>
+#include <sstream>
 
 using namespace std;
 
@@ -48,9 +49,9 @@ void createLiteralMatch(char literal_char, stack<StateMachine>& fragments)
 	fragments.push(StateMachine(curr_state, 1, vector<State*>{ curr_state }));
 }
 
-void createRangeLiteralMatch(const string ranges, stack<StateMachine>& fragments)
+void createCharacterClassMatch(const string ranges, stack<StateMachine>& fragments)
 {
-	// Ranger literal match
+	// Character class literal match
 	auto curr_state = StateFactory::CreateState(State::state_range, nullptr);
 
 	int start = 0, end = 0;
@@ -203,13 +204,167 @@ void addLiteral(char lit, stack<StateMachine>& fragments)
 	createLiteralMatch(lit, fragments);
 }
 
-void addRangeLiteral(const string ranges, stack<StateMachine>& fragments)
+void addCharacterClassLiteral(const string ranges, stack<StateMachine>& fragments)
 {
-	createRangeLiteralMatch(ranges, fragments);
+	createCharacterClassMatch(ranges, fragments);
 }
 
-bool RegexEngine::compile(const string regex, StateMachine& machine)
+string RegexEngine::preCompile(const string regex)
 {
+	// Pre compile the counted repititions
+
+	// Store partial strings incorporated as (...) or [...]
+	stack<string> partials;
+	// Store the poisitions of '(' and '['
+	stack<int> left_bracket_pos;
+
+	stringstream ss;
+
+	bool is_escaped = false;
+	string last;
+
+	for (int i = 0; i < regex.size(); i++)
+	{
+		if ((regex[i] == '(' || regex[i] == '[') && !is_escaped)
+		{
+			// If there is only 1 partial left and a new partial is coming up
+			// The old partial is complete without a counted repitition
+			if (left_bracket_pos.empty() && !partials.empty())
+			{
+				ss << partials.top();
+				partials.pop();
+			}
+
+			left_bracket_pos.push(i);
+		}
+		else if ((regex[i] == ')' || regex[i] == ']') && !is_escaped)
+		{
+			// Generate partials
+			int last_left_bracket = left_bracket_pos.top();
+			left_bracket_pos.pop();
+
+			partials.push(regex.substr(last_left_bracket, i - last_left_bracket + 1));
+		}
+		else if (regex[i] == '{' && !is_escaped)
+		{
+			// Get the expression to apply counted reference
+			string expression;
+			// Count modifier - if the expression is a single char, then it is already included once in the ss
+			int count_modifier = 0;
+			if (partials.empty())
+			{
+				expression = last;
+				count_modifier = -1;
+			}
+			else
+			{
+				expression = partials.top();
+				partials.pop();
+			}
+
+			// Find '}'
+			int right = regex.find('}', i);
+
+			// Get substring
+			string counts = regex.substr(i + 1, right - i - 1);
+
+			// Find the separator ','
+			size_t separator_pos = counts.find(',');
+
+			if (separator_pos == string::npos)
+			{
+				// Exact counts, {n}
+				int count = stoi(counts) + count_modifier;
+
+				while (count > 0)
+				{
+					ss << expression;
+					--count;
+				}
+			}
+			else
+			{
+				// Range
+				int lower = stoi(counts.substr(0, separator_pos)) + count_modifier;
+				
+				if (separator_pos == counts.length() - 1)
+				{
+					// Case {n,}
+					while (lower > 0)
+					{
+						ss << expression;
+						--lower;
+					}
+
+					ss << "+";
+				}
+				else
+				{
+					// Case {n,m}
+					int higher = stoi(counts.substr(separator_pos + 1)) + count_modifier;
+
+					while (lower > 0)
+					{
+						ss << expression;
+						--lower;
+						--higher;
+					}
+
+					while (higher > 0)
+					{
+						ss << expression << "?";
+						--higher;
+					}
+				}
+			}
+
+			// Update i
+			i = right;
+			last = string(1, regex[right]);
+		}
+		else if (regex[i] == '\\' && !is_escaped)
+		{
+			is_escaped = true;
+			ss << string(1, regex[i]);
+		}
+		else
+		{
+			// Literals
+
+			// Last partial is complete without counted repititions
+			if (!partials.empty() && left_bracket_pos.empty())
+			{
+				ss << partials.top();
+				partials.pop();
+			}
+
+			// Current char is not inside a partial
+			// Update it into the ss directly
+			if (left_bracket_pos.empty())
+			{
+				ss << string(1, regex[i]);
+			}
+
+			is_escaped = false;
+		}
+
+		last = string(1, regex[i]);
+	}
+
+	// Include the rest of the partials
+	while (!partials.empty())
+	{
+		ss << partials.top();
+		partials.pop();
+	}
+
+	return ss.str();
+}
+
+void RegexEngine::compile(const string init_regex, StateMachine& machine)
+{
+	string regex = preCompile(init_regex);
+
 	// Shunting-yard algorithm
 	stack<StateMachine> fragments;
 	stack<int> operators;
@@ -229,7 +384,7 @@ bool RegexEngine::compile(const string regex, StateMachine& machine)
 		if (i > 0 && last != '(' &&
 				(last_escaped || 
 				!isOperator(current) ||
-				(current == '(' && !isOperator(last))
+				current == '('
 				)
 			)
 		{
@@ -276,7 +431,7 @@ bool RegexEngine::compile(const string regex, StateMachine& machine)
 				auto right_angle = regex.find(']', i);
 
 				// Create range literal
-				addRangeLiteral(regex.substr(i + 1, right_angle - i - 1), fragments);
+				addCharacterClassLiteral(regex.substr(i + 1, right_angle - i - 1), fragments);
 
 				// Update current to ']', and set i correspondingly
 				current = regex[right_angle];
@@ -308,8 +463,6 @@ bool RegexEngine::compile(const string regex, StateMachine& machine)
 	frag.patchOutput(end_state);
 
 	machine = StateMachine(frag.getStart(), 1, vector<State*>{ end_state });
-
-	return true;
 }
 
 void addState(State *curr_state, vector<State*>& states)

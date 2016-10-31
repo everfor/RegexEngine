@@ -11,7 +11,7 @@ class RegexEngine
 public:
 	virtual ~RegexEngine();
 	static RegexEngine* Get();
-	bool compile(const std::string regex, StateMachine& machine);
+	void compile(const std::string regex, StateMachine& machine);
 	bool match(const std::string input, StateMachine& machine);
 	// Regex operators
 	// Most significant half byte = precedence
@@ -28,6 +28,7 @@ public:
 	static const int operator_precedence_mask = 0xF0;
 private:
 	RegexEngine();
+	std::string preCompile(const std::string regex);
 	static void InitializeOperatorMap();
 	// Singleton
 	static std::unique_ptr<RegexEngine> compiler;

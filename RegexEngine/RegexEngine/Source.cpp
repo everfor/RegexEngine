@@ -11,15 +11,15 @@ int main(int argc, char **argv)
 	StateMachine machine;
 	auto compiler = RegexEngine::Get();
 
-	string regex("a(bb)*[a-e]");
+	string regex("a{2,}(bb){2,5}[a-e]{2}");
 
 	compiler->compile(regex, machine);
 
 	cout << "aa: " << compiler->match("aa", machine) << endl;
 	cout << "aba: " << compiler->match("aba", machine) << endl;
-	cout << "abba: " << compiler->match("abba", machine) << endl;
-	cout << "abbbba: " << compiler->match("abbbba", machine) << endl;
-	cout << "abbbbs: " << compiler->match("abbbbs", machine) << endl;
+	cout << "aabbaa: " << compiler->match("aabbaa", machine) << endl;
+	cout << "aabbbbea: " << compiler->match("aabbbbea", machine) << endl;
+	cout << "aaaaaaaaaaabbbbbbbbcc: " << compiler->match("aaaabbbbbbbbcc", machine) << endl;
 
 	getchar();
 
