@@ -8,10 +8,10 @@ Simple regular expression engine implemented using Thompson NFA (Nondeterministi
 - Greedy quantifiers (+, ?, \*)
 - Character class ([a-z], [a-zA-Z] etc.)
 - Counted repititions ({n}, {n,}, {n,m})
+- Greedy submatch extraction
 
 ## Unsupported Features
 - Regex validility check
 - Ungreedy quantifiers
-- Submatch extraction
 - Unanchored matches
 - Backreferences
