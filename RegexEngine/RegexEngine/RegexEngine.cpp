@@ -40,7 +40,7 @@ void RegexEngine::InitializeOperatorMap()
 }
 
 /* Helper functions */
-void createLiteralMatch(char literal_char, stack<StateMachine>& fragments)
+void createLiteralMatch(int literal_char, stack<StateMachine>& fragments)
 {
 	// Literal match
 	auto curr_state = StateFactory::CreateState(literal_char, nullptr);
@@ -199,7 +199,7 @@ void addOperator(int op, stack<StateMachine>& fragments, stack<int>& operators)
 	operators.push(op);
 }
 
-void addLiteral(char lit, stack<StateMachine>& fragments)
+void addLiteral(int lit, stack<StateMachine>& fragments)
 {
 	createLiteralMatch(lit, fragments);
 }
@@ -231,7 +231,11 @@ string RegexEngine::preCompile(const string regex)
 			// The old partial is complete without a counted repitition
 			if (left_bracket_pos.empty() && !partials.empty())
 			{
-				ss << partials.top();
+				if (partials.top().find('{') == string::npos)
+				{
+					ss << partials.top();
+				}
+				
 				partials.pop();
 			}
 
@@ -243,7 +247,8 @@ string RegexEngine::preCompile(const string regex)
 			int last_left_bracket = left_bracket_pos.top();
 			left_bracket_pos.pop();
 
-			partials.push(regex.substr(last_left_bracket, i - last_left_bracket + 1));
+			// Add additional brackets for submatch extraction
+			partials.push("(" + regex.substr(last_left_bracket, i - last_left_bracket + 1) + ")");
 		}
 		else if (regex[i] == '{' && !is_escaped)
 		{
@@ -342,19 +347,25 @@ string RegexEngine::preCompile(const string regex)
 			// Update it into the ss directly
 			if (left_bracket_pos.empty())
 			{
-				ss << string(1, regex[i]);
+				// Add additional brackets for submatch extraction
+				ss << (isOperator(regex[i]) ? string(1, regex[i]) : "(" + string(1, regex[i]) + ")");
 			}
 
 			is_escaped = false;
 		}
 
-		last = string(1, regex[i]);
+		// Add additional brackets for submatch extraction
+		last = (isOperator(regex[i]) ? string(1, regex[i]) : "(" + string(1, regex[i]) + ")");
 	}
 
 	// Include the rest of the partials
 	while (!partials.empty())
 	{
-		ss << partials.top();
+		if (partials.top().find('{') == string::npos)
+		{
+			ss << partials.top();
+		}
+		
 		partials.pop();
 	}
 
@@ -388,6 +399,13 @@ void RegexEngine::compile(const string init_regex, StateMachine& machine)
 				)
 			)
 		{
+			addOperator(operator_concatenate, fragments, operators);
+		}
+
+		// If encountered "(", add a save mark
+		if (current == '(' && !is_escaped)
+		{
+			addLiteral(State::state_save, fragments);
 			addOperator(operator_concatenate, fragments, operators);
 		}
 
@@ -476,6 +494,11 @@ void addState(State *curr_state, vector<State*>& states)
 		addState(curr_state->getNext(), states);
 		addState(curr_state->getAltNext(), states);
 	}
+	else if (curr_state->getCondition() == State::state_save)
+	{
+		// Ignore save states
+		addState(curr_state->getNext(), states);
+	}
 	else
 	{
 		states.push_back(curr_state);
@@ -487,7 +510,7 @@ bool matchState(int match_char, State* state)
 	return state->isMatch(match_char);
 }
 
-bool matchStep(int match_char, vector<State*>& current, vector<State*>& next)
+bool matchStepBFS(int match_char, vector<State*>& current, vector<State*>& next)
 {
 	bool is_match = false;
 
@@ -497,6 +520,7 @@ bool matchStep(int match_char, vector<State*>& current, vector<State*>& next)
 		{
 			is_match = true;
 			addState(current[i]->getNext(), next);
+			addState(current[i]->getAltNext(), next);
 		}
 	}
 
@@ -514,7 +538,7 @@ bool RegexEngine::match(const std::string input, StateMachine& machine)
 
 	for (int i = 0; i < input.length(); ++i)
 	{
-		if (!matchStep(input[i], current, next))
+		if (!matchStepBFS(input[i], current, next))
 		{
 			return false;
 		}
@@ -524,5 +548,82 @@ bool RegexEngine::match(const std::string input, StateMachine& machine)
 		next.clear();
 	}
 
-	return matchStep(State::state_match, current, next);
+	return matchStepBFS(State::state_match, current, next);
+}
+
+bool matchDFS(const std::string input, State* state, size_t pos, size_t last_pos, vector<string>& submatches)
+{
+	if (state->getCondition() == State::state_match)
+	{
+		// Match
+
+		// Add the remaining submatch
+		if (last_pos < input.length())
+		{
+			submatches.push_back(input.substr(last_pos));
+		}
+
+
+		return true;
+	}
+
+	if (pos < input.length() && state != nullptr)
+	{
+		if (state->getCondition() == State::state_split)
+		{
+			// Branch state
+			// Try both branches
+			if (matchDFS(input, state->getNext(), pos, last_pos, submatches))
+			{
+				return true;
+			}
+			else if (matchDFS(input, state->getAltNext(), pos, last_pos, submatches))
+			{
+				return true;
+			}
+		}
+		else if (state->getCondition() == State::state_save)
+		{
+			// Save state
+			if (pos > last_pos)
+			{
+				// Encountered save state. Save current submatch
+				submatches.push_back(input.substr(last_pos, pos - last_pos));
+
+				// Further macthes
+				if (matchDFS(input, state->getNext(), pos, pos, submatches))
+				{
+					return true;
+				}
+
+				// Step back if not successful
+				submatches.pop_back();
+			}
+			else
+			{
+				// Save state encountered but no submatches yet. Go to next state directly
+				return matchDFS(input, state->getNext(), pos, last_pos, submatches);
+			}
+		}
+		else if (state->isMatch(input[pos]))
+		{
+			// Literal match
+
+			if (matchDFS(input, state->getNext(), pos + 1, last_pos, submatches))
+			{
+				return true;
+			}
+			else if (state->altNextEnabled() && matchDFS(input, state->getAltNext(), pos + 1, last_pos, submatches))
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+bool RegexEngine::matchWithSubmatchExtraction(const std::string input, StateMachine& machine, std::vector<string>& submatches)
+{
+	return matchDFS(input, machine.getStart(), 0, 0, submatches);
 }

@@ -14,7 +14,8 @@ public:
 		state_split = 256,		// Split into 2 branches
 		state_match = 257,		// End of matching
 		state_any = 258,		// Matches anything
-		state_range = 259		// Matches a range
+		state_range = 259,		// Matches a range
+		state_save = 260		// Save mark - used for submatch extraction
 	};
 	void setNext(State *new_nxt);
 	void setAltNext(State *new_alt_nxt);

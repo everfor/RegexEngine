@@ -1,5 +1,7 @@
 #include <iostream>
 #include <string>
+#include <vector>
+#include <algorithm>
 
 #include "RegexEngine.h"
 #include "StateMachine.h"
@@ -19,7 +21,11 @@ int main(int argc, char **argv)
 	cout << "aba: " << compiler->match("aba", machine) << endl;
 	cout << "aabbaa: " << compiler->match("aabbaa", machine) << endl;
 	cout << "aabbbbea: " << compiler->match("aabbbbea", machine) << endl;
-	cout << "aaaaaaaaaaabbbbbbbbcc: " << compiler->match("aaaabbbbbbbbcc", machine) << endl;
+	//cout << "aaaaaaaaaaabbbbbbbbcc: " << compiler->match("aaaabbbbbbbbcc", machine) << endl;
+	vector<string> submatches;
+	cout << "aaaaaaaaaaabbbbbbbbcc: " << compiler->matchWithSubmatchExtraction("aaaaaaaaaaabbbbbbbbcc", machine, submatches) << endl;
+	cout << "Submatches: " << endl;
+	for_each(begin(submatches), end(submatches), [](const string& s) {cout << s << endl; });
 
 	getchar();
 

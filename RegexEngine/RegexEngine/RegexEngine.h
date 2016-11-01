@@ -3,6 +3,7 @@
 #include <string>
 #include <map>
 #include <memory>
+#include <vector>
 
 class StateMachine;
 
@@ -13,6 +14,7 @@ public:
 	static RegexEngine* Get();
 	void compile(const std::string regex, StateMachine& machine);
 	bool match(const std::string input, StateMachine& machine);
+	bool matchWithSubmatchExtraction(const std::string input, StateMachine& machine, std::vector<std::string>& submatches);
 	// Regex operators
 	// Most significant half byte = precedence
 	// Least significant half byte = id
